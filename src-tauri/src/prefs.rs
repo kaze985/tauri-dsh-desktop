@@ -22,17 +22,24 @@ pub struct Prefs {
 
 impl Default for Prefs {
     fn default() -> Self {
-        Self { close_action: CloseAction::Ask }
+        Self {
+            close_action: CloseAction::Ask,
+        }
     }
 }
 
 fn prefs_path(app: &AppHandle) -> Option<std::path::PathBuf> {
-    app.path().app_config_dir().ok().map(|d| d.join("prefs.json"))
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("prefs.json"))
 }
 
 /// Load preferences from disk; falls back to defaults on any error.
 pub fn load(app: &AppHandle) -> Prefs {
-    let Some(path) = prefs_path(app) else { return Prefs::default() };
+    let Some(path) = prefs_path(app) else {
+        return Prefs::default();
+    };
     std::fs::read_to_string(path)
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
@@ -45,6 +52,9 @@ pub fn save(app: &AppHandle, prefs: &Prefs) {
         if let Some(dir) = path.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
-        let _ = std::fs::write(path, serde_json::to_string_pretty(prefs).unwrap_or_default());
+        let _ = std::fs::write(
+            path,
+            serde_json::to_string_pretty(prefs).unwrap_or_default(),
+        );
     }
 }

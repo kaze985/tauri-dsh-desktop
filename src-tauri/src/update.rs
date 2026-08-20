@@ -97,7 +97,9 @@ fn show_info(app: &AppHandle, text: &str) {
 /// service so the new version takes effect.
 pub async fn upgrade(app: &AppHandle, target: &str) {
     let state = app.state::<crate::state::AppState>();
-    state.upgrading.store(true, std::sync::atomic::Ordering::SeqCst);
+    state
+        .upgrading
+        .store(true, std::sync::atomic::Ordering::SeqCst);
 
     crate::emit(app, "loading", None, Some("正在升级 dsh，请稍候…"));
     crate::navigate_shell(app, "upgrading");
@@ -108,7 +110,9 @@ pub async fn upgrade(app: &AppHandle, target: &str) {
         600,
     );
 
-    state.upgrading.store(false, std::sync::atomic::Ordering::SeqCst);
+    state
+        .upgrading
+        .store(false, std::sync::atomic::Ordering::SeqCst);
     if !ok {
         crate::navigate_shell_error(
             app,

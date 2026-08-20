@@ -9,9 +9,9 @@ use std::time::{Duration, Instant};
 use prefs::CloseAction;
 use serde::Serialize;
 use state::AppState;
-use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_dialog::DialogExt;
 
 const SERVICE_URL: &str = "http://127.0.0.1:3080/";
@@ -30,8 +30,17 @@ struct ShellStatus {
 }
 
 /// Push a shell state to the local frontend page.
-fn emit(app: &AppHandle, phase: &'static str, code: Option<&'static str>, message: Option<impl Into<String>>) {
-    let payload = ShellStatus { phase, code, message: message.map(|m| m.into()) };
+fn emit(
+    app: &AppHandle,
+    phase: &'static str,
+    code: Option<&'static str>,
+    message: Option<impl Into<String>>,
+) {
+    let payload = ShellStatus {
+        phase,
+        code,
+        message: message.map(|m| m.into()),
+    };
     let _ = app.emit("shell://status", payload);
 }
 
@@ -39,7 +48,9 @@ fn pct(s: &str) -> String {
     let mut out = String::new();
     for b in s.bytes() {
         match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(b as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
             _ => out.push_str(&format!("%{b:02X}")),
         }
     }
@@ -121,7 +132,12 @@ pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
     let mut child = match service::spawn_dsh() {
         Ok(c) => c,
         Err(e) => {
-            emit(app, "error", Some("spawn-failed"), Some(format!("无法启动 dsh：{e}")));
+            emit(
+                app,
+                "error",
+                Some("spawn-failed"),
+                Some(format!("无法启动 dsh：{e}")),
+            );
             return;
         }
     };
@@ -265,7 +281,8 @@ pub fn run() {
             // Tray: show window / check update / reset close behavior / exit.
             let show_i = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
             let check_i = MenuItem::with_id(app, "check-update", "检查更新", true, None::<&str>)?;
-            let reset_i = MenuItem::with_id(app, "reset-close", "重置关闭行为", true, None::<&str>)?;
+            let reset_i =
+                MenuItem::with_id(app, "reset-close", "重置关闭行为", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &check_i, &reset_i, &quit_i])?;
             let _tray = TrayIconBuilder::with_id("main-tray")
