@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-08-20
+goal: "Thin-shell Tauri 2 app: spawn/manage dsh web (global npm install), tray,
+  close-to-tray dialog, update check, kill process tree on exit"

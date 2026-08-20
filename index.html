@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>DSH Desktop</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="brand"><span class="brand-dot"></span>DSH Desktop</div>
+
+      <section id="view-loading" class="card">
+        <div class="spinner"></div>
+        <p id="loading-text" class="hint">正在启动 dsh 服务…</p>
+      </section>
+
+      <section id="view-error" class="card hidden">
+        <h2 class="err-title">启动失败</h2>
+        <p id="error-message" class="msg"></p>
+        <p id="error-code" class="code"></p>
+        <div class="actions">
+          <button id="btn-retry" class="primary">重试</button>
+          <button id="btn-exit" class="ghost">退出</button>
+        </div>
+      </section>
+
+      <section id="view-setup" class="card hidden">
+        <h2>未检测到 dsh</h2>
+        <p class="msg">需要全局安装 DeepSeek Harness CLI（npm 包 @deepseek-ai/dsh）。</p>
+        <div class="actions">
+          <button id="btn-install" class="primary">自动安装 dsh</button>
+          <button id="btn-recheck" class="ghost">重新检测</button>
+          <button id="btn-setup-exit" class="ghost">退出</button>
+        </div>
+        <p class="hint">也可以手动运行：<code>npm i -g @deepseek-ai/dsh</code></p>
+      </section>
+
+      <section id="view-stopped" class="card hidden">
+        <h2 class="err-title">服务已停止</h2>
+        <p id="stopped-message" class="msg">dsh 服务意外退出。</p>
+        <div class="actions">
+          <button id="btn-restart" class="primary">重启服务</button>
+          <button id="btn-stop-exit" class="ghost">退出</button>
+        </div>
+      </section>
+
+      <section id="view-close" class="card hidden">
+        <h2>关闭 DSH Desktop？</h2>
+        <p class="msg">退出将停止 dsh 服务；最小化到托盘则继续在后台运行（定时任务等仍会执行）。</p>
+        <label class="remember"><input type="checkbox" id="remember-choice" /> 不再询问</label>
+        <div class="actions">
+          <button id="btn-close-tray" class="primary">最小化到托盘</button>
+          <button id="btn-close-exit" class="ghost">退出程序</button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
