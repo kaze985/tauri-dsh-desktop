@@ -15,7 +15,7 @@
 - [x] 3.2 实现 dsh CLI 可用性检查（`dsh --version`），缺失时展示 setup 指导页
 - [x] 3.3 以 CREATE_NO_WINDOW spawn `dsh web --host 127.0.0.1 --port 3080`，记录子进程句柄
 - [x] 3.4 就绪轮询（每 300ms TCP 探测，30s 超时）；就绪后 `window.navigate("http://127.0.0.1:3080")`
-- [ ] 3.5 验证并配置 Tauri capabilities 允许导航到外部 URL（core:webview:allow-navigate）
+- [x] 3.5 验证并配置 Tauri capabilities 允许导航到外部 URL（core:webview:allow-navigate）
 - [x] 3.6 监听子进程意外退出：应用运行期 dsh 崩溃 → 窗口回到本地错误页（重启/退出按钮）
 - [x] 3.7 干净终止：所有退出路径统一走 `taskkill /PID <pid> /T /F`，并挂 App 退出钩子兜底
 
