@@ -180,6 +180,7 @@ pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
 /// Watch the dsh process; on unexpected exit (not shutdown, not upgrade),
 /// bring the window back to the local stopped page.
 fn spawn_watchdog(app: AppHandle, mut child: std::process::Child) {
+    let pid = child.id();
     tauri::async_runtime::spawn(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(1)).await;
@@ -187,7 +188,11 @@ fn spawn_watchdog(app: AppHandle, mut child: std::process::Child) {
                 let state = app.state::<AppState>();
                 {
                     let mut g = state.pid.lock().unwrap();
-                    *g = None;
+                    // Only clear if it is still OUR child: a restart may have
+                    // already replaced the pid with the new process.
+                    if *g == Some(pid) {
+                        *g = None;
+                    }
                 }
                 let shutting = state.shutting_down.load(Ordering::SeqCst);
                 let upgrading = state.upgrading.load(Ordering::SeqCst);
@@ -285,7 +290,7 @@ pub fn run() {
                 MenuItem::with_id(app, "reset-close", "重置关闭行为", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &check_i, &reset_i, &quit_i])?;
-            let _tray = TrayIconBuilder::with_id("main-tray")
+            let tray = TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().expect("window icon").clone())
                 .tooltip("DSH Desktop")
                 .menu(&menu)
@@ -323,6 +328,9 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+            // The TrayIcon handle must stay alive for the app's lifetime,
+            // otherwise dropping it (end of setup) may remove the icon.
+            std::mem::forget(tray);
 
             // Startup sequence (slight delay lets the shell page register its
             // event listener before the first state is pushed).
