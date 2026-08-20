@@ -30,17 +30,16 @@ struct ShellStatus {
 }
 
 /// Push a shell state to the local frontend page.
-fn emit(
-    app: &AppHandle,
-    phase: &'static str,
-    code: Option<&'static str>,
-    message: Option<impl Into<String>>,
-) {
+fn emit(app: &AppHandle, phase: &'static str, code: Option<&'static str>, message: Option<String>) {
     let payload = ShellStatus {
         phase,
         code,
-        message: message.map(|m| m.into()),
+        message,
     };
+    eprintln!(
+        "[shell] phase={phase}{}",
+        code.map(|c| format!(" code={c}")).unwrap_or_default()
+    );
     let _ = app.emit("shell://status", payload);
 }
 
@@ -112,7 +111,7 @@ fn exit_app_impl(app: &AppHandle) {
 /// Full startup sequence: dsh check -> port precheck -> spawn -> readiness
 /// poll -> navigate to the service UI. Emits shell states along the way.
 pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
-    emit(app, "loading", None, Some("正在启动 dsh 服务…"));
+    emit(app, "loading", None, Some("正在启动 dsh 服务…".to_string()));
 
     if service::dsh_version().is_none() {
         emit(app, "setup", None, None);
@@ -124,7 +123,7 @@ pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
             app,
             "error",
             Some("port-occupied"),
-            Some("3080 端口已被占用。请先关闭占用该端口的程序，然后重试。"),
+            Some("3080 端口已被占用。请先关闭占用该端口的程序，然后重试。".to_string()),
         );
         return;
     }
@@ -158,7 +157,7 @@ pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
             app,
             "error",
             Some("startup-timeout"),
-            Some("dsh 在 30 秒内未能就绪，请重试。"),
+            Some("dsh 在 30 秒内未能就绪，请重试。".to_string()),
         );
         return;
     }
@@ -246,7 +245,12 @@ fn choose_close(app: AppHandle, action: String, remember: bool) {
 #[tauri::command]
 fn install_dsh(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        emit(&app, "loading", None, Some("正在安装 dsh，可能需要几分钟…"));
+        emit(
+            &app,
+            "loading",
+            None,
+            Some("正在安装 dsh，可能需要几分钟…".to_string()),
+        );
         let ok = service::run_wait("npm", &["i", "-g", "@deepseek-ai/dsh@latest"], 600);
         if ok {
             startup_sequence(&app, StartKind::Retry).await;
@@ -255,7 +259,7 @@ fn install_dsh(app: AppHandle) {
                 &app,
                 "error",
                 Some("install-failed"),
-                Some("dsh 安装失败，请检查网络后重试。"),
+                Some("dsh 安装失败，请检查网络后重试。".to_string()),
             );
         }
     });

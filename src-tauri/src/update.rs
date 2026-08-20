@@ -9,9 +9,9 @@ use tokio::sync::oneshot;
 use crate::service;
 
 /// Parse a dsh version string like "0.1.0-rc.7" into a comparable tuple.
-/// The final element is None for a release and Some(n) for a prerelease;
+/// The fourth element is true for a release and false for a prerelease;
 /// per semver, a release sorts after prereleases of the same core version.
-fn parse(s: &str) -> Option<(u64, u64, u64, Option<u64>)> {
+fn parse(s: &str) -> Option<(u64, u64, u64, bool, u64)> {
     let s = s.trim().trim_start_matches('v');
     let (core, pre) = match s.split_once('-') {
         Some((c, p)) => (c, Some(p)),
@@ -21,14 +21,14 @@ fn parse(s: &str) -> Option<(u64, u64, u64, Option<u64>)> {
     let maj: u64 = it.next()?.parse().ok()?;
     let min: u64 = it.next()?.parse().ok()?;
     let pat: u64 = it.next()?.parse().ok()?;
-    let pre_num = match pre {
-        None => None,
+    let (is_release, pre_num) = match pre {
+        None => (true, 0),
         Some(p) => {
             let digits: String = p.chars().filter(|c| c.is_ascii_digit()).collect();
-            Some(digits.parse().ok()?)
+            (false, digits.parse().ok()?)
         }
     };
-    Some((maj, min, pat, pre_num))
+    Some((maj, min, pat, is_release, pre_num))
 }
 
 pub fn compare(a: &str, b: &str) -> Ordering {
@@ -101,7 +101,12 @@ pub async fn upgrade(app: &AppHandle, target: &str) {
         .upgrading
         .store(true, std::sync::atomic::Ordering::SeqCst);
 
-    crate::emit(app, "loading", None, Some("正在升级 dsh，请稍候…"));
+    crate::emit(
+        app,
+        "loading",
+        None,
+        Some("正在升级 dsh，请稍候…".to_string()),
+    );
     crate::navigate_shell(app, "upgrading");
 
     let ok = service::run_wait(
