@@ -9,6 +9,13 @@ edition = "2021"
 name = "tauri_dsh_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[profile.release]
+# Workaround for a rustc 1.97.1 ICE (SCC assertion in borrowck) triggered by
+# regex-syntax's giant unicode tables with incremental release compilation;
+# also the profile Tauri recommends for distribution builds.
+incremental = false
+opt-level = "s"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
