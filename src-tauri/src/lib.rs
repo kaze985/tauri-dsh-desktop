@@ -86,6 +86,34 @@ fn show_window(app: &AppHandle) {
         let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
+        restore_content(app, &w);
+    }
+}
+
+/// When the window returns from the tray it may still be showing a local
+/// shell page (close dialog etc.). Route it back to the service UI when the
+/// service is alive, otherwise to the stopped page.
+fn restore_content(app: &AppHandle, w: &tauri::WebviewWindow) {
+    let Ok(url) = w.url() else { return };
+    let url = url.to_string();
+    let is_shell = if cfg!(debug_assertions) {
+        app.config()
+            .build
+            .dev_url
+            .clone()
+            .map(|d| url.starts_with(&d.to_string()))
+            .unwrap_or(false)
+    } else {
+        url.starts_with("http://tauri.localhost")
+    };
+    if !is_shell {
+        return;
+    }
+    let alive = app.state::<AppState>().pid.lock().unwrap().is_some();
+    if alive {
+        let _ = w.navigate(tauri::Url::parse(SERVICE_URL).unwrap());
+    } else {
+        navigate_shell(app, "stopped");
     }
 }
 
