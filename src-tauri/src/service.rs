@@ -111,6 +111,7 @@ pub fn spawn_dsh_on(port: u16) -> std::io::Result<Child> {
     Command::new("cmd")
         .args(["/C", "dsh", "web", "--host", HOST, "--port"])
         .arg(port.to_string())
+        .arg("--no-open")
         .creation_flags(CREATE_NO_WINDOW)
         .stdout(Stdio::null())
         .stderr(Stdio::null())

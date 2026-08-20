@@ -32,6 +32,7 @@
 ### D2: spawn 用 Rust `std::process::Command`，`CREATE_NO_WINDOW` 隐藏控制台
 
 `dsh` 是 npm 全局安装的 .cmd 包装；`std::process::Command` 用 CreateProcess 直接解析、不查 PATHEXT，因此统一经 `cmd /C` 调用（`Command::new("cmd").args(["/C", "dsh", ...])`）。
+补充（实现期发现）：spawn 追加 `--no-open` —— dsh-web-app 的 `openBrowser` 默认 true，`dsh web` 启动时会拉起默认浏览器，与客户端 WebView 形成双窗口；`--no-open` 是官方关闭开关（`dsh --profile web --help` 可见）。
 
 - **理由**：零额外依赖；`creation_flags(0x08000000)` 防止弹出黑色控制台窗口。
 - **替代方案**：tauri-plugin-shell —— 为单个长驻子进程引入插件不值得，且其 sidecar 机制面向打包二进制，不适配 npm 全局 CLI。

@@ -6,7 +6,7 @@ Windows 桌面客户端，用 Tauri 2 薄壳封装 [DeepSeek Harness (DSH)](http
 
 - **薄壳路线**：WebView 就绪后导航到 `http://127.0.0.1:3080`，不内嵌任何 DSH UI，SSH/任务看板等插件生态免费继承。
 - **全局 npm 安装 dsh**（不走 npx）：npx 按 spec 分哈希缓存，"裸包名"会永停旧版、手动更新喂不到客户端；全局安装使"当前版本"成为唯一事实。
-- 生命周期：端口预检 → `dsh web --host 127.0.0.1 --port 3080`（CREATE_NO_WINDOW）→ TCP 轮询就绪（300ms × 30s）→ 导航；退出统一 `taskkill /PID <pid> /T /F` 杀进程树。
+- 生命周期：端口预检 → `dsh web --host 127.0.0.1 --port 3080 --no-open`（CREATE_NO_WINDOW；`--no-open` 阻止 dsh 拉起默认浏览器，否则会出现 WebView 与浏览器双窗口）→ TCP 轮询就绪（300ms × 30s）→ 导航；退出统一 `taskkill /PID <pid> /T /F` 杀进程树。
 - 托盘菜单：显示主窗口 / 检查更新 / 重置关闭行为 / 退出。
 - 更新检查：后台比对 `dsh --version` 与 `npm view @deepseek-ai/dsh version`，用户确认后 `npm i -g` 升级并重启服务；断网静默跳过。
 - 单实例：tauri-plugin-single-instance，二次启动聚焦已有窗口。
