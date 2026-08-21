@@ -115,10 +115,10 @@ pub async fn upgrade(app: &AppHandle, target: &str) {
         600,
     );
 
-    state
-        .upgrading
-        .store(false, std::sync::atomic::Ordering::SeqCst);
     if !ok {
+        state
+            .upgrading
+            .store(false, std::sync::atomic::Ordering::SeqCst);
         crate::navigate_shell_error(
             app,
             "upgrade-failed",
@@ -126,7 +126,16 @@ pub async fn upgrade(app: &AppHandle, target: &str) {
         );
         return;
     }
+
+    // The old dsh process still holds port 3080: kill its whole tree first so
+    // the restart below can rebind. Keep the upgrading flag set while the
+    // watchdog may observe the old child's exit, so it does not flip to the
+    // stopped page mid-restart; clear it only after the new service is up.
+    crate::shutdown_service(app);
     crate::startup_sequence(app, crate::StartKind::Upgrade).await;
+    state
+        .upgrading
+        .store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
 #[cfg(test)]
