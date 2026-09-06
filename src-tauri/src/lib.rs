@@ -111,7 +111,16 @@ fn restore_content(app: &AppHandle, w: &tauri::WebviewWindow) {
     }
     let alive = app.state::<AppState>().pid.lock().unwrap().is_some();
     if alive {
-        let _ = w.navigate(tauri::Url::parse(SERVICE_URL).unwrap());
+        // Navigate to the authenticated URL (with ?token=) when we have it,
+        // falling back to the clean URL otherwise.
+        let target = app
+            .state::<AppState>()
+            .web_url
+            .lock()
+            .unwrap()
+            .clone()
+            .unwrap_or_else(|| SERVICE_URL.to_string());
+        let _ = w.navigate(tauri::Url::parse(&target).unwrap());
     } else {
         navigate_shell(app, "stopped");
     }
@@ -169,6 +178,16 @@ pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
         }
     };
 
+    // Capture dsh web's authenticated URL (with ?token=) from its stdout.
+    // Newer dsh versions require the token query param to load the UI.
+    {
+        let state = app.state::<AppState>();
+        *state.web_url.lock().unwrap() = None;
+        if let Some(out) = child.stdout.take() {
+            service::spawn_url_reader(out, state.web_url.clone());
+        }
+    }
+
     let deadline = Instant::now() + Duration::from_secs(service::READY_TIMEOUT_SECS);
     let mut ready = false;
     while Instant::now() < deadline {
@@ -197,8 +216,27 @@ pub async fn startup_sequence(app: &AppHandle, _kind: StartKind) {
     }
 
     emit(app, "ready", None, None);
+    // Newer dsh authenticates the Web UI via ?token= in its printed URL;
+    // wait briefly for it, then navigate there (fall back to the clean URL).
+    let auth_url = {
+        let state = app.state::<AppState>();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut found = None;
+        loop {
+            if let Some(u) = state.web_url.lock().unwrap().clone() {
+                found = Some(u);
+                break;
+            }
+            if Instant::now() > deadline {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(service::POLL_INTERVAL_MS)).await;
+        }
+        found
+    };
+    let target = auth_url.unwrap_or_else(|| SERVICE_URL.to_string());
     if let Some(w) = app.get_webview_window("main") {
-        let _ = w.navigate(tauri::Url::parse(SERVICE_URL).unwrap());
+        let _ = w.navigate(tauri::Url::parse(&target).unwrap());
     }
 
     spawn_watchdog(app.clone(), child);

@@ -7,7 +7,7 @@
 //! node/dsh grandchildren (plain child.kill() would orphan them and leave
 //! port 3080 held).
 
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
@@ -113,7 +113,7 @@ pub fn spawn_dsh_on(port: u16) -> std::io::Result<Child> {
         .arg(port.to_string())
         .arg("--no-open")
         .creation_flags(CREATE_NO_WINDOW)
-        .stdout(Stdio::null())
+        .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .stdin(Stdio::null())
         .spawn()
@@ -139,6 +139,39 @@ pub fn kill_child_tree(child: &mut Child) {
     let _ = child.wait();
 }
 
+/// Extract the authenticated dsh web URL from a "dsh web: <url>" stdout
+/// line. Newer dsh versions append ?token= to the printed URL; the client
+/// must navigate to that exact URL or the UI shows an auth-required page.
+pub fn parse_auth_url(line: &str) -> Option<String> {
+    let line = line.trim();
+    let rest = line.strip_prefix("dsh web:")?;
+    let url = rest.trim().split_whitespace().next()?;
+    if url.starts_with("http") {
+        Some(url.to_string())
+    } else {
+        None
+    }
+}
+
+/// Drain a dsh child stdout, storing the authenticated web URL in the slot
+/// once the "dsh web: <url>" line is seen; runs until stdout reaches EOF.
+pub fn spawn_url_reader(
+    stdout: std::process::ChildStdout,
+    slot: std::sync::Arc<std::sync::Mutex<Option<String>>>,
+) {
+    std::thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines().map_while(Result::ok) {
+            let mut guard = slot.lock().unwrap();
+            if guard.is_none() {
+                if let Some(url) = parse_auth_url(&line) {
+                    *guard = Some(url);
+                }
+            }
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,6 +189,30 @@ mod tests {
             !port_busy_on(port),
             "port should be free after dropping the listener"
         );
+    }
+
+    #[test]
+    fn parses_auth_url_with_token() {
+        assert_eq!(
+            parse_auth_url("dsh web: http://127.0.0.1:3080/?token=abcdef").as_deref(),
+            Some("http://127.0.0.1:3080/?token=abcdef")
+        );
+    }
+
+    #[test]
+    fn parses_auth_url_with_lan_suffix() {
+        assert_eq!(
+            parse_auth_url(
+                "dsh web: http://127.0.0.1:3080/?token=abc (LAN: http://192.168.1.2:3080/?token=abc)"
+            )
+            .as_deref(),
+            Some("http://127.0.0.1:3080/?token=abc")
+        );
+    }
+
+    #[test]
+    fn ignores_unrelated_lines() {
+        assert!(parse_auth_url("some other log line").is_none());
     }
 
     /// Tree kill: cmd /C ping -t builds a cmd.exe -> ping.exe tree that never
